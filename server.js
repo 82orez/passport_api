@@ -4,16 +4,37 @@ const morgan = require('morgan');
 const cors = require('cors');
 const dotenv = require('dotenv');
 dotenv.config();
+const cookieParser = require('cookie-parser');
+const session = require('express-session');
+const passport = require('./passport');
 
 // DB 연결을 위해 models/index.js 파일에 있는 sequelize 연결 객체와 사용할 테이블(객체 모델)들을를 불러온다.
 const { sequelize, User } = require('./models');
 
 // const { signup } = require('./controllers/user.controller');
 
+// ! 미들웨어 순서에 주의해야 함.
+app.use(morgan('dev'));
+
+app.use(cookieParser());
+app.use(cors({
+  origin: 'http://localhost:3000', // 클라이언트의 주소를 입력하세요.
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
+
 app.use(express.json({ strict: false }));
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
-app.use(cors());
+
+app.use(session({
+  secret: 'secret code',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false
+  }
+}));
 
 app.post('/signup', async (req, res) => {
   try {
@@ -41,43 +62,27 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-app.post('/login', async (req, res) => {
-  try {
-    // 먼저 이메일이 존재하는지 확인
-    const emailExists = await User.findOne({
-      where: {
-        email: req.body.email,
-      },
-    });
+app.use(passport.initialize());
+app.use(passport.session());
 
-    // 이메일이 존재하지 않으면 에러 메시지 보냄
-    if (!emailExists) {
-      return res.status(400).json({ error: '존재하지 않는 이메일입니다.' });
+app.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      console.error(err);
+      return next(err);
     }
-
-    // 이메일이 존재하면 비밀번호 확인
-    const user = await User.findOne({
-      where: {
-        email: req.body.email,
-        password: req.body.password,
-      },
-    });
-
-    // 비밀번호가 일치하지 않으면 에러 메시지 보냄
     if (!user) {
-      return res.status(400).json({ error: '비밀번호가 일치하지 않습니다.' });
+      return res.status(401).json(info);
     }
-
-    // 유저를 찾았다면 로그인 성공 메시지와 함께 이메일 정보도 전달
-    res.json({ result: 'Login success', email: user.email });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: '서버 에러' });
-  }
+    req.logIn(user, function (err) {
+      if (err) {
+        console.error(err);
+        return next(err);
+      }
+      return res.json({ result: 'Login success', email: req.user.email });
+    });
+  })(req, res, next);
 });
-
-
-
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
