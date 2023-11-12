@@ -10,6 +10,8 @@ const passport = require('./passport');
 
 // DB 연결을 위해 models/index.js 파일에 있는 sequelize 연결 객체와 사용할 테이블(객체 모델)들을를 불러온다.
 const { sequelize, User } = require('./models');
+const SequelizeStore = require('connect-session-sequelize')(session.Store);
+
 
 // const { signup } = require('./controllers/user.controller');
 
@@ -32,8 +34,12 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false
-  }
+    secure: false,
+    // maxAge: 10 * 1000,
+  },
+  store: new SequelizeStore({
+    db: sequelize
+  })
 }));
 
 app.post('/signup', async (req, res) => {
@@ -62,6 +68,7 @@ app.post('/signup', async (req, res) => {
   }
 });
 
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -83,6 +90,23 @@ app.post('/login', (req, res, next) => {
     });
   })(req, res, next);
 });
+
+app.get('/logout', (req, res) => {
+  // req.logout();
+  req.session.destroy();
+  res.json({ result: 'Logout success' });
+});
+
+app.get('/check-login', (req, res) => {
+  console.log(req.session)
+  if (req.session) {
+    res.json({ loggedIn: true });
+  } else {
+    res.json({ loggedIn: false });
+  }
+});
+
+
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize

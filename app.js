@@ -7,13 +7,22 @@ dotenv.config();
 
 // DB 연결을 위해 models/index.js 파일에 있는 sequelize 연결 객체와 사용할 테이블(객체 모델)들을를 불러온다.
 const { sequelize, User } = require('./models');
+const cookieParser = require('cookie-parser');
 
 // const { signup } = require('./controllers/user.controller');
 
+
+app.use(morgan('dev'));
+
+app.use(cookieParser());
+app.use(cors({
+  origin: 'http://localhost:3000', // 클라이언트의 주소를 입력하세요.
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
+
 app.use(express.json({ strict: false }));
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
-app.use(cors());
 
 app.post('/signup', async (req, res) => {
   try {
@@ -85,7 +94,7 @@ sequelize
   .then(() => console.log('DB is ready'))
   .catch((e) => console.log(e));
 
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 8081;
 app.listen(port, () => console.log(`Server is running on port ${port}`));
 
 // http://localhost:8080/
