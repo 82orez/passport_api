@@ -24,6 +24,15 @@ app.use(cors({
 app.use(express.json({ strict: false }));
 app.use(express.urlencoded({ extended: true }));
 
+// ! React 배포 부분.
+app.use('/', express.static(`${__dirname}/build`));
+app.get('/', (req, res) => {
+  if (`${__dirname}/index.html`) {
+    res.sendFile(`${__dirname}/index.html`);
+  }
+  res.send('No index.html exists!');
+});
+
 app.post('/signup', async (req, res) => {
   try {
     // 이메일이 이미 존재하는지 확인
@@ -76,7 +85,7 @@ app.post('/login', async (req, res) => {
     if (!user) {
       return res.status(400).json({ error: '비밀번호가 일치하지 않습니다.' });
     }
-
+    // ! user.id 를 이용해서 쿠키를 발행해야 함.
     // 유저를 찾았다면 로그인 성공 메시지와 함께 이메일 정보도 전달
     res.json({ result: 'Login success', email: user.email });
   } catch (e) {
