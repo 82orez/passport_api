@@ -129,17 +129,21 @@ app.get('/userInfo', async (req, res) => {
   try {
     const cookieId = req.cookies.cookieId;
 
+    // cookieId 값이 정의되어 있는지 확인
+    // cookieId 값이 undefined 인 경우, 오류 메시지를 반환하고 함수를 종료시키도록 했습니다. 이렇게 하면 User.findOne() 메소드를 호출할 때 id 의 값이 undefined 인 것을 방지할 수 있습니다.
+    if (!cookieId) {
+      return res.status(400).json({ error: '쿠키 정보가 없습니다.' });
+    }
+
     const user = await User.findOne({
       where: {
         id: cookieId,
       },
     });
 
-    if (!cookieId || !user.id) {
+    if (!user || !user.id) {
       res.status(401).send('Not Authorized');
     } else {
-      // delete user.password;
-      // res.json(user);  // 코드스테이츠 코드를 아래로 수정.
       res.json({ result: 'Login success', email: user.email });
     }
   } catch (e) {
@@ -157,7 +161,7 @@ app.post('/logout', (req, res) => {
       secure: true,
     })
     .send('Logged Out Successfully');
-})
+});
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
