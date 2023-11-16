@@ -130,10 +130,10 @@ app.get('/userInfo', async (req, res) => {
     const cookieId = req.cookies.cookieId;
 
     // cookieId 값이 정의되어 있는지 확인
-    // cookieId 값이 undefined 인 경우, 오류 메시지를 반환하고 함수를 종료시키도록 했습니다. 이렇게 하면 User.findOne() 메소드를 호출할 때 id 의 값이 undefined 인 것을 방지할 수 있습니다.
-    // 다만 이렇게 할 경우 클라이언트에 400 에러를 반환하게 됨. 따라서 아예 클라이언트에서 로컬 스토리지를 활용해서 로그인이 되어 있을 경우에만 요청을 보내는 것으로 문제 해결.
+    // cookieId 값이 undefined 인 경우, { result: 'Not Login Info' }으로 응답하고 함수를 종료시키도록 했습니다. 이렇게 하면 User.findOne() 메소드를 호출할 때 id 의 값이 undefined 인 것을 방지할 수 있습니다.
+    // 그리고 이 응답을 클라이언트에서 조건문으로 분기하여 처리하게 함.
     if (!cookieId) {
-      return res.status(400).json({ error: '쿠키 정보가 없습니다.' });
+      return res.json({ result: 'Not Login Info' });
     }
 
     const user = await User.findOne({
