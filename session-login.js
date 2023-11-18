@@ -13,7 +13,6 @@ const { sequelize, User } = require('./models');
 //mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-
 // express-session 라이브러리를 이용해 쿠키 설정을 해줄 수 있습니다.
 app.use(
   session({
@@ -27,7 +26,7 @@ app.use(
       httpOnly: true,
       secure: true,
     },
-  })
+  }),
 );
 app.use(logger('dev'));
 app.use(express.json());
@@ -40,7 +39,7 @@ app.use(
     origin: 'http://localhost:3000',
     methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
-  })
+  }),
 );
 
 // ! React 배포 부분.
@@ -162,10 +161,15 @@ app.post('/logout', (req, res) => {
   if (!req.session.userId) {
     res.status(400).send('Not Authorized');
   } else {
-    req.session.destroy();
-    res.status(205).send('Logged Out Successfully');
+    req.session.destroy((err) => {
+      if (err) {
+        console.log(err);
+      }
+      res.status(205).send('Logged Out Successfully');
+    });
   }
 });
+
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
   .sync({ force: false })
