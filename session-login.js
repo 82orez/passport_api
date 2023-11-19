@@ -93,9 +93,9 @@ app.post('/login', async (req, res) => {
       },
     });
 
-    // 이메일이 존재하지 않으면 에러 메시지 보냄
+    // 이메일이 존재하지 않으면 메시지 보내고 종료.
     if (!emailExists) {
-      return res.status(400).json({ error: '존재하지 않는 이메일입니다.' });
+      return res.json({ result: '존재하지 않는 이메일입니다.' });
     }
 
     // 이메일이 존재하면 비밀번호 확인
@@ -106,9 +106,9 @@ app.post('/login', async (req, res) => {
       },
     });
 
-    // 비밀번호가 일치하지 않으면 에러 메시지 보냄
+    // 비밀번호가 일치하지 않으면 메시지 보내고 종료.
     if (!user) {
-      return res.status(400).json({ error: '비밀번호가 일치하지 않습니다.' });
+      return res.json({ result: '비밀번호가 일치하지 않습니다.' });
     }
     // ? 이메일과 비번이 일치하는 user 가 있으면 다음 단계로 넘어감.
 
