@@ -69,10 +69,10 @@ app.post('/signup', async (req, res) => {
 
     // 이메일이 이미 존재하면 에러 메시지를 보냄
     if (existingUser) {
-      return res.status(400).json({ error: '이미 가입된 이메일 주소입니다.' });
+      return res.json({ result: 'Existing Email' });
     }
 
-    // 새로운 사용자 생성
+    // 가입된 이메일이 없으면 새로운 사용자 생성
     await User.create({
       email: req.body.email,
       password: req.body.password,
