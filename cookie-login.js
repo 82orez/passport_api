@@ -1,52 +1,35 @@
 const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const session = require('express-session');
-const fs = require('fs');
-const https = require('https');
 const app = express();
+const morgan = require('morgan');
+const cors = require('cors');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const { sequelize, User } = require('./models');
-const SequelizeStore = require('connect-session-sequelize')(session.Store);
-const sessionStore = new SequelizeStore({
-  db: sequelize,
-});
-
-//mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
+// ! 개발 환경에서 https 를 사용하기 위한 작업 1
+const fs = require('fs');
+const https = require('https');
+//? mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-// express-session 라이브러리를 이용해 쿠키 설정을 해줄 수 있습니다.
-app.use(
-  session({
-    secret: '@codestates',
-    resave: false,
-    saveUninitialized: true,
-    store: sessionStore,
-    cookie: {
-      domain: 'localhost',
-      path: '/',
-      sameSite: 'none',
-      httpOnly: true,
-      secure: true,
-    },
-  }),
-);
+// DB 연결을 위해 models/index.js 파일에 있는 sequelize 연결 객체와 사용할 테이블(객체 모델)들을를 불러온다.
+const { sequelize, User } = require('./models');
+const cookieParser = require('cookie-parser');
+
+// const { signup } = require('./controllers/user.controller');
 
 app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
-// CORS 설정이 필요합니다. 클라이언트가 어떤 origin 인지에 따라 달리 설정할 수 있습니다.
-// 메서드는 GET, POST, OPTIONS 를 허용합니다.
+app.use(cookieParser());
 app.use(
   cors({
-    origin: 'http://localhost:3000',
-    methods: ['GET', 'POST', 'OPTIONS'],
+    origin: 'http://localhost:3000', // 클라이언트의 주소를 입력하세요.
+    methods: ['GET', 'POST'],
     credentials: true,
   }),
 );
+
+app.use(express.json({ strict: false }));
+app.use(express.urlencoded({ extended: true }));
 
 // ! React 배포 부분.
 app.use('/', express.static(`${__dirname}/build`));
@@ -57,7 +40,6 @@ app.get('/', (req, res) => {
   res.send('No index.html exists!');
 });
 
-// 라우터 부분 시작.
 app.post('/signup', async (req, res) => {
   try {
     // 이메일이 이미 존재하는지 확인
@@ -112,40 +94,51 @@ app.post('/login', async (req, res) => {
     }
     // ? 이메일과 비번이 일치하는 user 가 있으면 다음 단계로 넘어감.
 
-    // ! session 을 이용해서 쿠키를 발행하는 부분을 변경함.
+    // ! user.id 를 이용해서 쿠키를 발행하는 부부을 변경함.
+    const cookieOptions = {
+      domain: 'localhost',
+      path: '/',
+      sameSite: 'none',
+      secure: true,
+      expires: new Date(Date.now() + 24 * 3600 * 1000 * 7), // 7일 후 소멸되는 Persistent Cookie
+      httpOnly: true,
+    };
+
     if (!user.id) {
       res.status(401).send('Not Authorized');
     } else if (req.body.checkedKeepLogin) {
-      // * Session Id 생성.
-      // * req.session + .변수명(userId) 를 사용해 세션 객체에 user.id를 저장
-      req.session.userId = user.id;
-      // '로그인 상태 유지'에 체크가 되어 있으면 7일짜리 영속성 쿠키 발생.
-      req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
+      res.cookie('cookieId', user.id, cookieOptions);
       res.redirect('/userinfo');
     } else {
-      req.session.userId = user.id;
+      delete cookieOptions.expires;
+      res.cookie('cookieId', user.id, cookieOptions); // Expires 옵션이 없는 Session Cookie
       res.redirect('/userinfo');
     }
+
+    // ? 쿠키 적용하기 전 코드이므로 주석 처리
+    // 유저를 찾았다면 로그인 성공 메시지와 함께 user 의 이메일 정보도 전달
+    // res.json({ result: 'Login success', email: user.email });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: '서버 에러' });
   }
 });
 
+// ! 쿠키 적용을 위해 새롭게 생성.
 app.get('/userInfo', async (req, res) => {
   try {
-    const userId = req.session.userId;
+    const cookieId = req.cookies.cookieId;
 
-    // 세션 정보에 userId 값이 정의되어 있는지 확인
-    // userId 값이 undefined 인 경우, 즉 로그인 상태 유지 정보가 없는 경우에는 { result: 'Not Login Info' }으로 응답하고 함수를 종료시키도록 했습니다. 이렇게 하면 User.findOne() 메소드를 호출할 때 id 의 값이 undefined 인 것을 방지할 수 있습니다.
+    // cookieId 값이 정의되어 있는지 확인
+    // cookieId 값이 undefined 인 경우, { result: 'Not Login Info' }으로 응답하고 함수를 종료시키도록 했습니다. 이렇게 하면 User.findOne() 메소드를 호출할 때 id 의 값이 undefined 인 것을 방지할 수 있습니다.
     // 그리고 이 응답을 클라이언트에서 조건문으로 분기하여 처리하게 함.
-    if (!userId) {
+    if (!cookieId) {
       return res.json({ result: 'Not Login Info' });
     }
 
     const user = await User.findOne({
       where: {
-        id: userId,
+        id: cookieId,
       },
     });
 
@@ -160,16 +153,15 @@ app.get('/userInfo', async (req, res) => {
 });
 
 app.post('/logout', (req, res) => {
-  if (!req.session.userId) {
-    res.status(400).send('Not Authorized');
-  } else {
-    req.session.destroy((err) => {
-      if (err) {
-        console.log(err);
-      }
-      res.status(205).send('Logged Out Successfully');
-    });
-  }
+  res
+    .status(205)
+    .clearCookie('cookieId', {
+      domain: 'localhost',
+      path: '/',
+      sameSite: 'none',
+      secure: true,
+    })
+    .send('Logged Out Successfully');
 });
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
@@ -177,9 +169,6 @@ sequelize
   .sync({ force: false })
   .then(() => console.log('DB is ready'))
   .catch((e) => console.log(e));
-
-// 세션 스토어를 DB 와 동기화.
-sessionStore.sync();
 
 const port = process.env.PORT || 8081;
 
@@ -196,9 +185,9 @@ if (fs.existsSync('/Users/tglee/developer/ssl/key.pem') && fs.existsSync('/Users
   };
 
   server = https.createServer(credentials, app);
-  server.listen(port, () => console.log(`HTTPS Server is starting on ${port}`));
+  server.listen(port, () => console.log(`🚀 HTTPS Server is starting on ${port}`));
 } else {
-  server = app.listen(port, () => console.log(`HTTP Server is starting on ${port}`));
+  server = app.listen(port, () => console.log(`🚀 HTTP Server is starting on ${port}`));
 }
 module.exports = server;
 
