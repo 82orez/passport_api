@@ -93,25 +93,19 @@ app.post('/signup', async (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     // 먼저 이메일이 존재하는지 확인
-    const emailExists = await User.findOne({
+      const user = await User.findOne({
       where: {
         email: req.body.email,
       },
     });
 
     // 이메일이 존재하지 않으면 메시지 보내고 종료.
-    if (!emailExists) {
+    if (!user) {
       return res.json({ result: '존재하지 않는 이메일입니다.' });
     }
-
     // 이메일이 존재하면 비밀번호 확인
-    const user = await User.findOne({
-      where: {
-        email: req.body.email,
-      },
-    });
 
-    // 비밀번호를 비교
+    // 요청된 비밀번호와 암호화되어 저장되어 있는 비밀 번호를 비교
     const match = await bcrypt.compare(req.body.password, user.password);
 
     if (!match) {
