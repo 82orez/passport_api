@@ -8,6 +8,9 @@ const app = express();
 const dotenv = require('dotenv');
 dotenv.config();
 
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 const { sequelize, User } = require('./models');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const sessionStore = new SequelizeStore({
@@ -60,22 +63,25 @@ app.get('/', (req, res) => {
 // 라우터 부분 시작.
 app.post('/signup', async (req, res) => {
   try {
-    // 이메일이 이미 존재하는지 확인
+    // 이메일이 이미 존재하는지 확인.
     const existingUser = await User.findOne({
       where: {
         email: req.body.email,
       },
     });
 
-    // 이메일이 이미 존재하면 에러 메시지를 보냄
+    // 이메일이 이미 존재하면 메시지를 보내고 종료.
     if (existingUser) {
       return res.json({ result: 'Existing Email' });
     }
 
+    // 비밀번호를 암호화
+    const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
+
     // 가입된 이메일이 없으면 새로운 사용자 생성
     await User.create({
       email: req.body.email,
-      password: req.body.password,
+      password: hashedPassword,
     });
     res.json({ result: 'Insert success' });
   } catch (e) {
@@ -102,12 +108,13 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({
       where: {
         email: req.body.email,
-        password: req.body.password,
       },
     });
 
-    // 비밀번호가 일치하지 않으면 메시지 보내고 종료.
-    if (!user) {
+    // 비밀번호를 비교
+    const match = await bcrypt.compare(req.body.password, user.password);
+
+    if (!match) {
       return res.json({ result: '비밀번호가 일치하지 않습니다.' });
     }
     // ? 이메일과 비번이 일치하는 user 가 있으면 다음 단계로 넘어감.
