@@ -25,7 +25,7 @@ app.use(
   session({
     secret: '@codestates',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     store: sessionStore,
     cookie: {
       domain: 'localhost',
