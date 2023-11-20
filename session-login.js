@@ -17,39 +17,54 @@ const sessionStore = new SequelizeStore({
   db: sequelize,
 });
 
-//mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+//! mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
+if (process.env.NODE_ENV !== 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
 
 // express-session 라이브러리를 이용해 쿠키 설정을 해줄 수 있습니다.
-app.use(
-  session({
-    secret: '@codestates',
-    resave: false,
-    saveUninitialized: false,
-    store: sessionStore,
-    cookie: {
-      domain: 'localhost',
-      path: '/',
-      sameSite: 'none',
-      httpOnly: true,
-      secure: true,
-    },
-  }),
-);
+const sessionOption = {
+  secret: process.env.COOKIE_SECRET || '@codestates',
+  resave: false,
+  saveUninitialized: false,
+  store: sessionStore,
+  cookie: {
+    domain: 'localhost',
+    path: '/',
+    sameSite: 'none',
+    httpOnly: true,
+    secure: true,
+  },
+};
+if (process.env.NODE_ENV === 'production') {
+  sessionOption.proxy = true;
+}
+app.use(session(sessionOption));
 
-app.use(morgan('dev'));
+if (process.env.NODE_ENV === 'production') {
+  app.use(morgan('combined'));
+} else {
+  app.use(morgan('dev'));
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// CORS 설정이 필요합니다. 클라이언트가 어떤 origin 인지에 따라 달리 설정할 수 있습니다.
+// CORS 설정이 필요합니다. 다음 사항을 응답에 실어 보내야 합니다.
+// 클라이언트가 어떤 origin 인지에 따라 달리 설정할 수 있습니다.
 // 메서드는 GET, POST, OPTIONS 를 허용합니다.
-app.use(
-  cors({
-    origin: 'http://localhost:3000',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    credentials: true,
-  }),
-);
+if (process.env.NODE_ENV === 'production') {
+  app.use(cors());
+} else {
+  app.use(
+    cors({
+      origin: 'http://localhost:3000',
+      methods: ['GET', 'POST', 'OPTIONS'],
+      // 클라이언트와 서버가 도메인이 다른 경우, credentials 설정을 반드시 true 로 해줘야 cookie 공유가 가능함.
+      credentials: true,
+    }),
+  );
+}
 
 // ! React 배포 부분.
 app.use('/', express.static(`${__dirname}/build`));
@@ -93,7 +108,7 @@ app.post('/signup', async (req, res) => {
 app.post('/login', async (req, res) => {
   try {
     // 먼저 이메일이 존재하는지 확인
-      const user = await User.findOne({
+    const user = await User.findOne({
       where: {
         email: req.body.email,
       },
@@ -184,24 +199,28 @@ sessionStore.sync();
 
 const port = process.env.PORT || 8081;
 
-// ? 인증서 파일들이 존재하는 경우에만 https 프로토콜을 사용하는 서버를 실행합니다.
-// ? 만약 인증서 파일이 존재하지 않는경우, http 프로토콜을 사용하는 서버를 실행합니다.
-// * 파일 존재여부를 확인하는 폴더는 인증서가 저장되어 있는 /Users/tglee/developer/ssl 폴더입니다.
-let server;
-if (fs.existsSync('/Users/tglee/developer/ssl/key.pem') && fs.existsSync('/Users/tglee/developer/ssl/cert.pem')) {
-  const privateKey = fs.readFileSync('/Users/tglee/developer/ssl/key.pem', 'utf8');
-  const certificate = fs.readFileSync('/Users/tglee/developer/ssl/cert.pem', 'utf8');
-  const credentials = {
-    key: privateKey,
-    cert: certificate,
-  };
-
-  server = https.createServer(credentials, app);
-  server.listen(port, () => console.log(`HTTPS Server is starting on ${port}`));
+if (process.env.NODE_ENV === 'production') {
+  app.listen(port, () => console.log(`Server is running on port ${port}`));
 } else {
-  server = app.listen(port, () => console.log(`HTTP Server is starting on ${port}`));
+  // ? 인증서 파일들이 존재하는 경우에만 https 프로토콜을 사용하는 서버를 실행합니다.
+  // ? 만약 인증서 파일이 존재하지 않는경우, http 프로토콜을 사용하는 서버를 실행합니다.
+  // * 파일 존재여부를 확인하는 폴더는 인증서가 저장되어 있는 /Users/tglee/developer/ssl 폴더입니다.
+  let server;
+  if (fs.existsSync('/Users/tglee/developer/ssl/key.pem') && fs.existsSync('/Users/tglee/developer/ssl/cert.pem')) {
+    const privateKey = fs.readFileSync('/Users/tglee/developer/ssl/key.pem', 'utf8');
+    const certificate = fs.readFileSync('/Users/tglee/developer/ssl/cert.pem', 'utf8');
+    const credentials = {
+      key: privateKey,
+      cert: certificate,
+    };
+
+    server = https.createServer(credentials, app);
+    server.listen(port, () => console.log(`HTTPS Server is starting on ${port}`));
+  } else {
+    server = app.listen(port, () => console.log(`HTTP Server is starting on ${port}`));
+  }
+  module.exports = server;
 }
-module.exports = server;
 
 // ! 쿠키 적용을 위해 일단 주석 처리
 // app.listen(port, () => console.log(`Server is running on port ${port}`));
