@@ -6,7 +6,7 @@ const config = require('../config/config')[env];
 const db = {};
 
 // mysql 연결을 위한 연결 객체 생성.
-const sequelize = new Sequelize(config.database, config.username, config.password, { host: config.host, dialect: 'mysql', port: config.port });
+const sequelize = new Sequelize(config.database, config.username, config.password, config);
 
 // 연결 객체를 db 객체에 저장.
 db.sequelize = sequelize;
