@@ -53,9 +53,7 @@ app.use(express.urlencoded({ extended: false }));
 // CORS 설정이 필요합니다. 다음 사항을 응답에 실어 보내야 합니다.
 // 클라이언트가 어떤 origin 인지에 따라 달리 설정할 수 있습니다.
 // 메서드는 GET, POST, OPTIONS 를 허용합니다.
-if (process.env.NODE_ENV === 'production') {
-  app.use(cors());
-} else {
+if (process.env.NODE_ENV !== 'production') {
   app.use(
     cors({
       origin: 'http://localhost:3000',
