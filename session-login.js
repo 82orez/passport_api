@@ -53,16 +53,14 @@ app.use(express.urlencoded({ extended: false }));
 // CORS 설정이 필요합니다. 다음 사항을 응답에 실어 보내야 합니다.
 // 클라이언트가 어떤 origin 인지에 따라 달리 설정할 수 있습니다.
 // 메서드는 GET, POST, OPTIONS 를 허용합니다.
-if (process.env.NODE_ENV !== 'production') {
-  app.use(
-    cors({
-      origin: 'http://localhost:3000',
-      methods: ['GET', 'POST', 'OPTIONS'],
-      // 클라이언트와 서버가 도메인이 다른 경우, credentials 설정을 반드시 true 로 해줘야 cookie 공유가 가능함.
-      credentials: true,
-    }),
-  );
-}
+app.use(
+  cors({
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    // 클라이언트와 서버가 도메인이 다른 경우, credentials 설정을 반드시 true 로 해줘야 cookie 공유가 가능함.
+    credentials: true,
+  }),
+);
 
 // ! React 배포 부분.
 app.use('/', express.static(`${__dirname}/build`));
@@ -219,9 +217,6 @@ if (process.env.NODE_ENV === 'production') {
   }
   module.exports = server;
 }
-
-// ! 쿠키 적용을 위해 일단 주석 처리
-// app.listen(port, () => console.log(`Server is running on port ${port}`));
 
 // http://localhost:8081/
 // https://localhost:8081/
