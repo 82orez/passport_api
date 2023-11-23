@@ -29,11 +29,11 @@ const sessionOption = {
   saveUninitialized: false,
   store: sessionStore,
   cookie: {
-    domain: 'localhost',
+    domain: process.env.COOKIE_DOMAIN || 'localhost',
     path: '/',
-    sameSite: 'none',
+    sameSite: process.env.COOKIE_SAMESITE || 'none',
     httpOnly: true,
-    secure: true,
+    secure: process.env.COOKIE_SECURE || true,
   },
 };
 if (process.env.NODE_ENV === 'production') {
@@ -43,24 +43,33 @@ app.use(session(sessionOption));
 
 if (process.env.NODE_ENV === 'production') {
   app.use(morgan('combined'));
+
+  const helmet = require('helmet');
+  app.use(
+    helmet.hsts({
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    }),
+  );
 } else {
   app.use(morgan('dev'));
+
+  // 같은 도메인이 아닌 싸이트끼리 요청과 응답을 주고 받을 때에는 CORS 설정이 필요합니다. 다음 사항을 응답에 실어 클라이언트로 보내야 합니다.
+  // 클라이언트가 어떤 origin 인지에 따라 달리 설정할 수 있습니다. 메서드는 GET, POST, OPTIONS 를 허용합니다.
+  app.use(
+    cors({
+      // 배포 시에 cors 설정이 필요한 경우에는 실제 url 로 바꿔줘야 함. 예) 'http://api.infothings.net'
+      origin: 'http://localhost:3000',
+      methods: ['GET', 'POST', 'OPTIONS'],
+      // 클라이언트와 서버의 도메인이 다른 경우에는 credentials 설정을 반드시 true 로 해줘야 cookie 공유가 가능하고 클라이언트에서도 요청을 보낼 때 credentials: true 설정을 해줘야 합니다.
+      credentials: true,
+    }),
+  );
 }
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// CORS 설정이 필요합니다. 다음 사항을 응답에 실어 보내야 합니다.
-// 클라이언트가 어떤 origin 인지에 따라 달리 설정할 수 있습니다.
-// 메서드는 GET, POST, OPTIONS 를 허용합니다.
-app.use(
-  cors({
-    origin: 'http://localhost:3000',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    // 클라이언트와 서버가 도메인이 다른 경우, credentials 설정을 반드시 true 로 해줘야 cookie 공유가 가능함.
-    credentials: true,
-  }),
-);
 
 // ! React 배포 부분.
 app.use('/', express.static(`${__dirname}/build`));
@@ -193,7 +202,7 @@ sequelize
 // 세션 스토어를 DB 와 동기화.
 sessionStore.sync();
 
-const port = process.env.PORT || 8081;
+const port = process.env.PORT || 4000;
 
 if (process.env.NODE_ENV === 'production') {
   app.listen(port, () => console.log(`Server is running on port ${port}`));
