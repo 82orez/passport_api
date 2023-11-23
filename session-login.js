@@ -29,11 +29,11 @@ const sessionOption = {
   saveUninitialized: false,
   store: sessionStore,
   cookie: {
-    domain: process.env.COOKIE_DOMAIN || 'localhost',
+    domain: 'localhost',
     path: '/',
-    sameSite: process.env.COOKIE_SAMESITE || 'none',
+    sameSite: 'none',
     httpOnly: true,
-    secure: process.env.COOKIE_SECURE || true,
+    secure: true,
   },
 };
 if (process.env.NODE_ENV === 'production') {
