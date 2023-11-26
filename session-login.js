@@ -193,6 +193,16 @@ app.post('/logout', (req, res) => {
   }
 });
 
+// ! 새로고침 시에 cannot get 404 오류 방지 코드
+// 클라이언트에서 새로고침한다는 말은 서버에 해당 경로의 get 요청을 한다는 의미이므로 다른 get 요청이 방해받지 않도록 정상적인 get 요청들이 모두 수행된 후에 다른 모든 get 요청에 대해서만 index.html 파일을 클라이언트에게 보내기 위해 get 요청들 중 맨 마지막에 배치.
+app.get('/*', function (req, res) {
+  res.sendFile(`${__dirname}/build/index.html`, function (err) {
+    if (err) {
+      res.status(500).send(err);
+    }
+  });
+});
+
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
   .sync({ force: false })
