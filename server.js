@@ -110,11 +110,11 @@ app.get('/check-login', (req, res) => {
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
-  .sync({ force: false })
+  .sync({ force: true })
   .then(() => console.log('DB is ready'))
   .catch((e) => console.log(e));
 
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`Server is running on port ${port}`));
 
 // http://localhost:8080/
