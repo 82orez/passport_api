@@ -31,7 +31,7 @@ passport.serializeUser((user, done) => {
   done(null, user.id);
 });
 
-// ? 생성된 session 을 사용하는 부분.
+// ? 생성된 session 의 user.id 를 사용하는 부분.
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findOne({ where: { id } });

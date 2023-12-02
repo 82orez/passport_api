@@ -103,7 +103,7 @@ app.post('/signup', async (req, res) => {
       email: req.body.email,
       password: hashedPassword,
     });
-    res.json({ result: 'Insert success' });
+    res.json({ result: 'Signup success' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: '서버 에러' });
