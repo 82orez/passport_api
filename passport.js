@@ -11,12 +11,12 @@ passport.use(new LocalStrategy({
     const user = await User.findOne({ where: { email } });
     if (!user) {
       // ! err, user, info 순으로 반환한다.
-      return done(null, false, { message: '존재하지 않는 이메일입니다.' });
+      return done(null, false, { result: '존재하지 않는 이메일입니다.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return done(null, false, { message: '비밀번호가 일치하지 않습니다.' });
+      return done(null, false, { result: '비밀번호가 일치하지 않습니다.' });
     }
 
     return done(null, user);

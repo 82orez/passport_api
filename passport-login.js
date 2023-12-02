@@ -12,9 +12,11 @@ const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
 const { sequelize, User } = require('./models');
-const helmet = require('helmet');
 const passport = require('./passport');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
+const sessionStore = new SequelizeStore({
+  db: sequelize,
+});
 
 //! mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
 if (process.env.NODE_ENV !== 'production') {
@@ -47,21 +49,24 @@ if (process.env.NODE_ENV === 'production') {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use(
-  session({
-    secret: 'secret code',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: false,
-      maxAge: 24 * 60 * 60 * 1000,
-    },
-    store: new SequelizeStore({
-      db: sequelize,
-    }),
-  }),
-);
+// express-session 라이브러리를 이용해 쿠키 설정을 해줄 수 있습니다.
+const sessionOption = {
+  secret: process.env.COOKIE_SECRET || '@codestates',
+  resave: false,
+  saveUninitialized: false,
+  store: sessionStore,
+  cookie: {
+    domain: 'localhost',
+    path: '/',
+    sameSite: 'none',
+    httpOnly: true,
+    secure: true,
+  },
+};
+if (process.env.NODE_ENV === 'production') {
+  sessionOption.proxy = true;
+}
+app.use(session(sessionOption));
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -123,16 +128,20 @@ app.post('/login', (req, res, next) => {
         console.error(err);
         return next(err);
       }
-      return res.json({ result: 'Login success', email: req.user.email });
-      // req.session.userId = user.dataValues.id;
-      // res.redirect('/userInfo');
+
+      // 로그인 상태 유지: checkedKeepLogin 값에 따라 maxAge 설정
+      if (req.body.checkedKeepLogin) {
+        req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; // 7일
+      }
+
+      res.redirect('/userInfo');
     });
   })(req, res, next);
 });
 
 app.get('/userInfo', async (req, res) => {
   try {
-    // 세션 정보에 userId 값이 정의되어 있는지 확인
+    // 세션 정보에 user 정보가 정의되어 있는지 확인
     if (!req.user) {
       return res.json({ result: 'Not Login Info' });
     } else {
@@ -143,47 +152,38 @@ app.get('/userInfo', async (req, res) => {
   }
 });
 
-// app.get('/userInfo', async (req, res) => {
-//   try {
-//     const userId = req.session.userId;
-//
-//     // 세션 정보에 userId 값이 정의되어 있는지 확인
-//     // userId 값이 undefined 인 경우, 즉 로그인 상태 유지 정보가 없는 경우에는 { result: 'Not Login Info' }으로 응답하고 함수를 종료시키도록 했습니다. 이렇게 하면 User.findOne() 메소드를 호출할 때 id 의 값이 undefined 인 것을 방지할 수 있습니다.
-//     // 그리고 이 응답을 클라이언트에서 조건문으로 분기하여 처리하게 함.
-//     if (!userId) {
-//       return res.json({ result: 'Not Login Info' });
-//     }
-//
-//     const user = await User.findOne({
-//       where: {
-//         id: userId,
-//       },
-//     });
-//
-//     if (!user || !user.id) {
-//       res.status(401).send('Not Authorized');
-//     } else {
-//       res.json({ result: 'Login success', email: user.email });
-//     }
-//   } catch (e) {
-//     console.error(e);
-//   }
-// });
+app.post('/logout', (req, res) => {
+  if (!req.user) {
+    res.status(400).send('Not Authorized');
+  } else {
+    req.session.destroy((err) => {
+      if (err) {
+        console.log(err);
+      }
+      res.json({ result: 'Logged Out Successfully' });
+    });
+  }
+});
 
 // ! 새로고침 시에 cannot get 404 오류 방지 코드
-app.get('/*', function (req, res) {
-  res.sendFile(`${__dirname}/build/index.html`, function (err) {
-    if (err) {
-      res.status(500).send(err);
-    }
+if (process.env.NODE_ENV === 'production') {
+  app.get('/*', function (req, res) {
+    res.sendFile(`${__dirname}/build/index.html`, function (err) {
+      if (err) {
+        res.status(500).send(err);
+      }
+    });
   });
-});
+}
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
-  .sync({ force: true })
+  .sync({ force: false })
   .then(() => console.log('DB is ready'))
   .catch((e) => console.log(e));
+
+// 세션 스토어를 DB 와 동기화.
+sessionStore.sync();
 
 const port = process.env.PORT || 4000;
 
