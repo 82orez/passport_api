@@ -56,11 +56,12 @@ const sessionOption = {
   saveUninitialized: false,
   store: sessionStore,
   cookie: {
-    domain: 'localhost',
+    domain: process.env.NODE_ENV === 'production' ? 'infothings.net' : 'localhost',
     path: '/',
-    sameSite: 'none',
+    sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'none',
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV !== 'production',
+    // secure: process.env.NODE_ENV === 'production' ? false : true,
   },
 };
 if (process.env.NODE_ENV === 'production') {
@@ -166,10 +167,13 @@ app.post('/logout', (req, res) => {
 });
 
 app.get('/auth/google', passport.authenticate('google'));
-app.get('/auth/google/callback', passport.authenticate('google', {
-  successReturnToOrRedirect: process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000',
-  failureRedirect: '/login'
-}));
+app.get(
+  '/auth/google/callback',
+  passport.authenticate('google', {
+    successReturnToOrRedirect: process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000',
+    failureRedirect: '/login',
+  }),
+);
 
 // ! 새로고침 시에 cannot get 404 오류 방지 코드
 if (process.env.NODE_ENV === 'production') {
