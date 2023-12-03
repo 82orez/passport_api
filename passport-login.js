@@ -165,6 +165,8 @@ app.post('/logout', (req, res) => {
   }
 });
 
+app.get('/auth/google', passport.authenticate('google'));
+
 // ! 새로고침 시에 cannot get 404 오류 방지 코드
 if (process.env.NODE_ENV === 'production') {
   app.get('/*', function (req, res) {
