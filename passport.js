@@ -40,24 +40,22 @@ passport.use(
       callbackURL: process.env.CALLBACK_URL || 'https://localhost:4000/auth/google/callback',
       scope: ['email', 'profile'],
     },
-    (accessToken, refreshToken, profile, done) => {
-      User.findOne({ where: { googleId: profile.id } })
-        .then((existingUser) => {
-          if (existingUser) {
-            return done(null, existingUser);
-          } else {
-            User.create({
-              email: profile.emails[0].value,
-              googleId: profile.id,
-            })
-              .then((user) => done(null, user))
-              .catch((err) => {
-                console.log(err);
-                done(err);
-              });
-          }
-        })
-        .catch((err) => done(err));
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const existingUser = await User.findOne({ where: { googleId: profile.id } });
+        if (existingUser) {
+          return done(null, existingUser);
+        } else {
+          const user = await User.create({
+            email: profile.emails[0].value,
+            googleId: profile.id,
+          });
+          return done(null, user);
+        }
+      } catch (err) {
+        console.log(err);
+        return done(err);
+      }
     },
   ),
 );

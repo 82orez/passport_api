@@ -166,6 +166,11 @@ app.post('/logout', (req, res) => {
 });
 
 app.get('/auth/google', passport.authenticate('google'));
+app.get('/auth/google/callback', passport.authenticate('google', {
+  // !
+  successReturnToOrRedirect: 'http://localhost:3000',
+  failureRedirect: '/login'
+}));
 
 // ! 새로고침 시에 cannot get 404 오류 방지 코드
 if (process.env.NODE_ENV === 'production') {
@@ -180,7 +185,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
-  .sync({ force: false })
+  .sync({ force: true })
   .then(() => console.log('DB is ready'))
   .catch((e) => console.log(e));
 
