@@ -167,8 +167,7 @@ app.post('/logout', (req, res) => {
 
 app.get('/auth/google', passport.authenticate('google'));
 app.get('/auth/google/callback', passport.authenticate('google', {
-  // !
-  successReturnToOrRedirect: 'http://localhost:3000',
+  successReturnToOrRedirect: process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000',
   failureRedirect: '/login'
 }));
 
