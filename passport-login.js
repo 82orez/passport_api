@@ -175,6 +175,12 @@ app.get(
   }),
 );
 
+app.get('/auth/kakao', passport.authenticate('kakao'));
+app.get('/auth/kakao/callback', passport.authenticate('kakao', {
+  successReturnToOrRedirect: process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000',
+  failureRedirect: '/login'
+}));
+
 // ! 새로고침 시에 cannot get 404 오류 방지 코드
 if (process.env.NODE_ENV === 'production') {
   app.get('/*', function (req, res) {

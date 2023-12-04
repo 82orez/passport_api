@@ -1,6 +1,7 @@
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const KakaoStrategy = require('passport-kakao').Strategy;
 const bcrypt = require('bcrypt');
 const { User } = require('./models');
 
@@ -61,7 +62,35 @@ passport.use(
   ),
 );
 
-// ? 유저 정보(user.id)를 이용해서 로그인 session 이 생성하고 저장하는 부분.
+passport.use(
+  new KakaoStrategy(
+    {
+      clientID: process.env.KAKAO_CLIENT_ID,
+      callbackURL:
+        process.env.NODE_ENV === 'production' ? 'https://api.infothings.net/auth/kakao/callback' : 'https://localhost:4000/auth/kakao/callback',
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const existingUser = await User.findOne({ where: { kakaoId: profile.id } });
+        if (existingUser) {
+          return done(null, existingUser);
+        } else {
+          const user = await User.create({
+            kakaoId: profile.id,
+            email: profile._json?.kakao_account?.email,
+          });
+          return done(null, user);
+        }
+      } catch (err) {
+        console.log(err);
+        return done(err);
+      }
+    },
+  ),
+);
+
+
+// ? 유저 정보(user.id)를 이용해서 로그인 session 을 생성하고 저장하는 부분.
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
