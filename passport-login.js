@@ -171,14 +171,14 @@ app.get(
   '/auth/google/callback',
   passport.authenticate('google', {
     successReturnToOrRedirect: process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000',
-    failureRedirect: '/login',
+    failureRedirect: process.env.NODE_ENV === 'production' ? '/login' : 'http://localhost:3000/login',
   }),
 );
 
 app.get('/auth/kakao', passport.authenticate('kakao'));
 app.get('/auth/kakao/callback', passport.authenticate('kakao', {
   successReturnToOrRedirect: process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000',
-  failureRedirect: '/login'
+  failureRedirect: process.env.NODE_ENV === 'production' ? '/login' : 'http://localhost:3000/login',
 }));
 
 // ! 새로고침 시에 cannot get 404 오류 방지 코드

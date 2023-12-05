@@ -44,14 +44,21 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        const existingUser = await User.findOne({ where: { googleId: profile.id } });
+        const existingUser = await User.findOne({ where: { email: profile.emails[0].value } });
         if (existingUser) {
-          return done(null, existingUser);
+          if (existingUser.googleId) {
+            // 구글 전략을 사용하여 이미 존재하는 사용자
+            return done(null, existingUser);
+          } else {
+            // 다른 전략을 사용하는 존재하는 사용자
+            return done(null, false, { message: '최초 등록한 방법을 사용하여 로그인해 주세요.' });
+          }
         } else {
+          // 새 사용자 생성
           const user = await User.create({
+            // 사용자 생성 로직
             email: profile.emails[0].value,
             googleId: profile.id,
-            provider: 'google'
           });
           return done(null, user);
         }
@@ -60,6 +67,22 @@ passport.use(
         return done(err);
       }
     },
+    // try {
+    //   const existingUser = await User.findOne({ where: { email: profile.emails[0].value } });
+    //   if (existingUser) {
+    //     return done(null, existingUser);
+    //   } else {
+    //     const user = await User.create({
+    //       email: profile.emails[0].value,
+    //       googleId: profile.id,
+    //       provider: 'google'
+    //     });
+    //     return done(null, user);
+    //   }
+    // } catch (err) {
+    //   console.log(err);
+    //   return done(err);
+    // }
   ),
 );
 
@@ -79,7 +102,7 @@ passport.use(
           const user = await User.create({
             kakaoId: profile.id,
             email: profile._json?.kakao_account?.email,
-            provider: 'kakao'
+            provider: 'kakao',
           });
           return done(null, user);
         }
@@ -90,7 +113,6 @@ passport.use(
     },
   ),
 );
-
 
 // ? 유저 정보(user.id)를 이용해서 로그인 session 을 생성하고 저장하는 부분.
 passport.serializeUser((user, done) => {
