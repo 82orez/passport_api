@@ -167,13 +167,22 @@ app.post('/logout', (req, res) => {
 });
 
 app.get('/auth/google', passport.authenticate('google', { prompt: 'select_account' }));
-app.get(
-  '/auth/google/callback',
-  passport.authenticate('google', {
-    successReturnToOrRedirect: process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000',
-    failureRedirect: process.env.NODE_ENV === 'production' ? '/login' : 'http://localhost:3000/login',
-  }),
-);
+app.get('/auth/google/callback', function (req, res, next) {
+  passport.authenticate('google', function (err, user, info) {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.redirect((process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000') + '?message=' + encodeURIComponent(info.message));
+    }
+    req.logIn(user, function (err) {
+      if (err) {
+        return next(err);
+      }
+      return res.redirect(process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000');
+    });
+  })(req, res, next);
+});
 
 app.get('/auth/kakao', passport.authenticate('kakao'));
 app.get('/auth/kakao/callback', function (req, res, next) {
