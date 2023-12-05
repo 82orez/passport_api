@@ -13,18 +13,22 @@ passport.use(
     },
     async (email, password, done) => {
       try {
-        const user = await User.findOne({ where: { email } });
-        if (!user) {
-          // ! err, user, info 순으로 반환한다.
+        const existingUser = await User.findOne({ where: { email } });
+        // ! err, user, info 순으로 반환한다.
+        if (!existingUser) {
           return done(null, false, { result: '존재하지 않는 이메일입니다.' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        if (existingUser.provider !== 'Email') {
+          return done(null, false, { result: `${existingUser.provider}` });
+        }
+
+        const isMatch = await bcrypt.compare(password, existingUser.password);
         if (!isMatch) {
           return done(null, false, { result: '비밀번호가 일치하지 않습니다.' });
         }
 
-        return done(null, user);
+        return done(null, existingUser);
       } catch (error) {
         console.error(error);
         return done(error);
@@ -67,22 +71,6 @@ passport.use(
         return done(err);
       }
     },
-    // try {
-    //   const existingUser = await User.findOne({ where: { email: profile.emails[0].value } });
-    //   if (existingUser) {
-    //     return done(null, existingUser);
-    //   } else {
-    //     const user = await User.create({
-    //       email: profile.emails[0].value,
-    //       googleId: profile.id,
-    //       provider: 'google'
-    //     });
-    //     return done(null, user);
-    //   }
-    // } catch (err) {
-    //   console.log(err);
-    //   return done(err);
-    // }
   ),
 );
 
