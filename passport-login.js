@@ -176,10 +176,22 @@ app.get(
 );
 
 app.get('/auth/kakao', passport.authenticate('kakao'));
-app.get('/auth/kakao/callback', passport.authenticate('kakao', {
-  successReturnToOrRedirect: process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000',
-  failureRedirect: process.env.NODE_ENV === 'production' ? '/login' : 'http://localhost:3000/login',
-}));
+app.get('/auth/kakao/callback', function (req, res, next) {
+  passport.authenticate('kakao', function (err, user, info) {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.redirect((process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000') + '?message=' + encodeURIComponent(info.message));
+    }
+    req.logIn(user, function (err) {
+      if (err) {
+        return next(err);
+      }
+      return res.redirect(process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000');
+    });
+  })(req, res, next);
+});
 
 // ! 새로고침 시에 cannot get 404 오류 방지 코드
 if (process.env.NODE_ENV === 'production') {

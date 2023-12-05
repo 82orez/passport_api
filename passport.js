@@ -95,14 +95,17 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        const existingUser = await User.findOne({ where: { kakaoId: profile.id } });
+        const existingUser = await User.findOne({ where: { email: profile._json.kakao_account.email } });
         if (existingUser) {
-          return done(null, existingUser);
+          if (existingUser.kakaoId) {
+            return done(null, existingUser);
+          } else {
+            return done(null, false, { message: '최초 등록한 방법을 사용하여 로그인해 주세요.' });
+          }
         } else {
           const user = await User.create({
             kakaoId: profile.id,
-            email: profile._json?.kakao_account?.email,
-            provider: 'kakao',
+            email: profile._json.kakao_account.email,
           });
           return done(null, user);
         }
