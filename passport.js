@@ -51,14 +51,13 @@ passport.use(
             return done(null, existingUser);
           } else {
             // 다른 전략을 사용하는 존재하는 사용자
-            return done(null, false, { message: '최초 등록한 방법을 사용하여 로그인해 주세요.' });
+            return done(null, false, { message: `${existingUser.provider}` });
           }
         } else {
           // 새 사용자 생성
           const user = await User.create({
-            // 사용자 생성 로직
-            email: profile.emails[0].value,
             googleId: profile.id,
+            email: profile.emails[0].value,
             provider: 'Google',
           });
           return done(null, user);
@@ -100,12 +99,8 @@ passport.use(
         if (existingUser) {
           if (existingUser.kakaoId) {
             return done(null, existingUser);
-          }
-          // else if (existingUser.googleId) {
-          //   return done(null, false, { message: `이미 ${existingUser.provider} 계정으로 회원 가입하셨습니다. ${existingUser.provider} 계정으로 로그인 부탁드립니다.` });
-          // }
-          else {
-            return done(null, false, { message: `이미 ${existingUser.provider} 계정으로 회원 가입하셨습니다. ${existingUser.provider} 계정으로 로그인 부탁드립니다.` });
+          } else {
+            return done(null, false, { message: `${existingUser.provider}` });
           }
         } else {
           const user = await User.create({
