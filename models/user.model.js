@@ -5,25 +5,30 @@ module.exports = (sequelize, DataTypes) => {
     {
       email: {
         type: DataTypes.STRING(40),
-        unique: true
+        unique: true,
       },
       password: {
         type: DataTypes.STRING(100),
         validate: {
           len: {
             args: [5],
-            msg: "Password length should be greater than 5"
-          }
-        }
+            msg: 'Password length should be greater than 5',
+          },
+        },
+      },
+      provider: {
+        type: DataTypes.ENUM('local', 'google', 'kakao'),
+        allowNull: false,
+        defaultValue: 'local',
       },
       googleId: {
         type: DataTypes.STRING(30),
-        unique: true
+        unique: true,
       },
       kakaoId: {
         type: DataTypes.STRING(30),
-        unique: true
-      }
+        unique: true,
+      },
     },
     {
       timestamps: false,

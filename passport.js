@@ -51,6 +51,7 @@ passport.use(
           const user = await User.create({
             email: profile.emails[0].value,
             googleId: profile.id,
+            provider: 'google'
           });
           return done(null, user);
         }
@@ -78,6 +79,7 @@ passport.use(
           const user = await User.create({
             kakaoId: profile.id,
             email: profile._json?.kakao_account?.email,
+            provider: 'kakao'
           });
           return done(null, user);
         }
