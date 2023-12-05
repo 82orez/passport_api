@@ -17,9 +17,9 @@ module.exports = (sequelize, DataTypes) => {
         },
       },
       provider: {
-        type: DataTypes.ENUM('local', 'google', 'kakao'),
+        type: DataTypes.ENUM('Email', 'Google', 'Kakao'),
         allowNull: false,
-        defaultValue: 'local',
+        defaultValue: 'Email',
       },
       googleId: {
         type: DataTypes.STRING(30),

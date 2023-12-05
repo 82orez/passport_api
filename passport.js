@@ -59,6 +59,7 @@ passport.use(
             // 사용자 생성 로직
             email: profile.emails[0].value,
             googleId: profile.id,
+            provider: 'Google',
           });
           return done(null, user);
         }
@@ -99,13 +100,18 @@ passport.use(
         if (existingUser) {
           if (existingUser.kakaoId) {
             return done(null, existingUser);
-          } else {
-            return done(null, false, { message: '최초 등록한 방법을 사용하여 로그인해 주세요.' });
+          }
+          // else if (existingUser.googleId) {
+          //   return done(null, false, { message: `이미 ${existingUser.provider} 계정으로 회원 가입하셨습니다. ${existingUser.provider} 계정으로 로그인 부탁드립니다.` });
+          // }
+          else {
+            return done(null, false, { message: `이미 ${existingUser.provider} 계정으로 회원 가입하셨습니다. ${existingUser.provider} 계정으로 로그인 부탁드립니다.` });
           }
         } else {
           const user = await User.create({
             kakaoId: profile.id,
             email: profile._json.kakao_account.email,
+            provider: 'Kakao',
           });
           return done(null, user);
         }
