@@ -8,6 +8,9 @@ const app = express();
 const dotenv = require('dotenv');
 dotenv.config();
 
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
@@ -82,6 +85,67 @@ app.get('/', (req, res) => {
 });
 
 // ! 라우터 부분 시작.
+app.post('/email', async (req, res) => {
+  try {
+    // 이메일이 이미 존재하는지 확인.
+    const existingUser = await User.findOne({
+      where: {
+        email: req.body.email,
+      },
+    });
+    // 이메일이 이미 존재하면 메시지를 보내고 종료.
+    if (existingUser) {
+      if (existingUser.provider === 'Google' || existingUser.provider === 'Kakao' || existingUser.provider === 'Email') {
+        return res.json({ result: `${existingUser.provider}` });
+      }
+    }
+
+    // 6자리 난수 생성
+    const token = crypto.randomBytes(3).toString('hex');
+
+    // 현재 시각 저장
+    const now = new Date();
+
+    // 메일 발송 설정
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.TOKEN_EMAIL,
+        pass: process.env.APP_SECRET,
+      },
+    });
+
+    // 메일 발송 옵션 설정
+    const mailOptions = {
+      from: process.env.TOKEN_EMAIL,
+      to: req.body.email,
+      subject: '회원가입 인증 메일입니다.',
+      text: `인증 번호는 ${token} 입니다.`,
+    };
+
+    // 메일 발송
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        return console.log(error);
+      }
+      console.log('Email sent: ' + info.response);
+    });
+
+    // 가입된 이메일이 없으면 새로운 사용자 생성
+    await User.create({
+      email: req.body.email,
+      // password: hashedPassword,
+      token: token,
+      createdAt: now,
+    });
+
+    res.json({ result: 'Check your email for verification code' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: '서버 에러' });
+  }
+});
+
 app.post('/signup', async (req, res) => {
   try {
     // 이메일이 이미 존재하는지 확인.
