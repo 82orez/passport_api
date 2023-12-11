@@ -34,11 +34,6 @@ module.exports = (sequelize, DataTypes) => {
       token: {
         type: DataTypes.STRING(6),
       },
-      verified: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
     },
     {
       // ? timestamps 기본값은 true: createdAt, updatedAt 칼럼 자동 생성.
