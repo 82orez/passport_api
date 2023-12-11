@@ -195,11 +195,11 @@ app.post('/verify', async (req, res) => {
     const diff = Math.abs(now - user.updatedAt) / 1000; // 초 단위로 변환
 
     if (diff > 180) {
-      // 3분 = 180초=
+      // 3분 = 180초
       return res.json({ result: 'Token expired' });
     }
 
-    // 토큰 유효하면 사용자 인증
+    // ! 토큰 유효하면 사용자 인증
     user.verified = true;
     await user.save();
 

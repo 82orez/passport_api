@@ -4,6 +4,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const KakaoStrategy = require('passport-kakao').Strategy;
 const bcrypt = require('bcrypt');
 const { User } = require('./models');
+const { Op } = require('sequelize');
 
 passport.use(
   new LocalStrategy(
@@ -49,7 +50,14 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        const existingUser = await User.findOne({ where: { email: profile.emails[0].value } });
+        const existingUser = await User.findOne({
+          where: {
+            email: profile.emails[0].value,
+            provider: {
+              [Op.ne]: null,
+            },
+          },
+        });
         if (existingUser) {
           if (existingUser.googleId) {
             // 구글 전략을 사용하여 이미 존재하는 사용자
@@ -84,7 +92,14 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        const existingUser = await User.findOne({ where: { email: profile._json.kakao_account.email } });
+        const existingUser = await User.findOne({
+          where: {
+            email: profile._json.kakao_account.email,
+            provider: {
+              [Op.ne]: null,
+            },
+          },
+        });
         if (existingUser) {
           if (existingUser.kakaoId) {
             return done(null, existingUser);

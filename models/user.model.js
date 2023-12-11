@@ -5,7 +5,8 @@ module.exports = (sequelize, DataTypes) => {
     {
       email: {
         type: DataTypes.STRING(40),
-        unique: true,
+        // ? 원래는 true 로 설정해서 중복된 이메일이 등록되는 것을 방지해야 하지만 로컬에서 provider 값을 이용해서 회원 가입할 때 이메일이 중복으로 적용되는 경우가 있으므로 여기에서는 주석 처리함.
+        // unique: true,
       },
       password: {
         type: DataTypes.STRING(100),
