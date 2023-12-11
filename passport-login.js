@@ -91,25 +91,26 @@ app.post('/email', async (req, res) => {
     // 이메일이 이미 존재하는지 확인.
     const existingUser = await User.findOne({
       where: {
+        // 클라이언트에서 보내온 이메일 값을 가지면서, provider 칼럼의 값이 null 이 아닌 경우: 여기에서는 Google, Kakao, Email
         email: req.body.email,
-        // ? provider 칼럼의 값이 null 이 아닌 경우
         provider: {
           [Op.ne]: null,
         },
       },
     });
-    // 이메일이 이미 존재하면 메시지를 보내고 종료.
+    // Google, Kakao, Email 계정(provider)로 가입된 이메일이 이미 존재하면 메시지를 보내고 종료.
     if (existingUser) {
       if (existingUser.provider === 'Google' || existingUser.provider === 'Kakao' || existingUser.provider === 'Email') {
         return res.json({ result: `${existingUser.provider}` });
       }
     }
 
-    // 6자리 난수 생성
+    // ?클라이언트에서 보내온 이메일 값이 아예 없거나, provider 갑이 null 인 경우 다음 과정을 계속 진행.
+    // token 발행: 6자리 난수 생성
     const token = crypto.randomBytes(3).toString('hex');
 
     // 현재 시각 저장
-    const now = new Date();
+    // const now = new Date();
 
     // 메일 발송 설정
     const transporter = nodemailer.createTransport({
@@ -137,13 +138,6 @@ app.post('/email', async (req, res) => {
     });
 
     // ! 가입된 이메일이 없으면 새로운 사용자 생성
-    // await User.create({
-    //   email: req.body.email,
-    //   // password: hashedPassword,
-    //   token: token,
-    //   createdAt: now,
-    // });
-
     const [user, created] = await User.findOrCreate({
       where: {
         email: req.body.email,
@@ -153,19 +147,14 @@ app.post('/email', async (req, res) => {
         // ? findOrCreate 메소드가 사용자를 생성할 때 사용됩니다.
         token: token,
         // createdAt: now,
-
-        // password: hashedPassword,
       },
     });
 
-    // ?만약 사용자가 이미 존재한다면,
+    // ? 만약 사용자가 이미 존재한다면, 해당 사용자를 업데이트합니다.
     if (!created) {
       await user.update({
-        // 해당 사용자를 업데이트합니다.
         token: token,
         // createdAt: now,
-
-        // password: hashedPassword,
       });
     }
 
@@ -212,26 +201,35 @@ app.post('/verify', async (req, res) => {
 
 app.post('/signup', async (req, res) => {
   try {
-    // 이메일이 이미 존재하는지 확인.
-    const existingUser = await User.findOne({
-      where: {
-        email: req.body.email,
-      },
-    });
-
-    // 이메일이 이미 존재하면 메시지를 보내고 종료.
-    if (existingUser) {
-      return res.json({ result: 'Existing Email' });
-    }
+    // // 이메일이 이미 존재하는지 확인.
+    // const existingUser = await User.findOne({
+    //   where: {
+    //     email: req.body.email,
+    //   },
+    // });
+    //
+    // // 이메일이 이미 존재하면 메시지를 보내고 종료.
+    // if (existingUser) {
+    //   return res.json({ result: 'Existing Email' });
+    // }
 
     // 비밀번호를 암호화
     const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
 
     // 가입된 이메일이 없으면 새로운 사용자 생성
-    await User.create({
-      email: req.body.email,
-      password: hashedPassword,
-    });
+    await User.update(
+      {
+        password: hashedPassword,
+        provider: 'Email',
+        token: null,
+      },
+      {
+        where: {
+          email: req.body.email,
+          provider: null,
+        },
+      },
+    );
     res.json({ result: 'Signup success' });
   } catch (e) {
     console.error(e);
