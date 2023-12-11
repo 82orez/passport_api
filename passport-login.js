@@ -16,12 +16,13 @@ const saltRounds = 10;
 
 const { sequelize, User } = require('./models');
 const passport = require('./passport');
+const { Op } = require('sequelize');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const sessionStore = new SequelizeStore({
   db: sequelize,
 });
 
-//! mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
+// ? mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
 if (process.env.NODE_ENV !== 'production') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
@@ -75,7 +76,7 @@ app.use(session(sessionOption));
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ! React 배포 부분.
+// ? React 배포 부분.
 app.use('/', express.static(`${__dirname}/build`));
 app.get('/', (req, res) => {
   if (`${__dirname}/index.html`) {
@@ -84,13 +85,17 @@ app.get('/', (req, res) => {
   res.send('No index.html exists!');
 });
 
-// ! 라우터 부분 시작.
+// ? 라우터 부분 시작.
 app.post('/email', async (req, res) => {
   try {
     // 이메일이 이미 존재하는지 확인.
     const existingUser = await User.findOne({
       where: {
         email: req.body.email,
+        // ? provider 칼럼의 값이 null 이 아닌 경우
+        provider: {
+          [Op.ne]: null,
+        },
       },
     });
     // 이메일이 이미 존재하면 메시지를 보내고 종료.
@@ -119,8 +124,8 @@ app.post('/email', async (req, res) => {
     const mailOptions = {
       from: process.env.TOKEN_EMAIL,
       to: req.body.email,
-      subject: '회원가입 인증 메일입니다.',
-      text: `인증 번호는 ${token} 입니다.`,
+      subject: '회원가입 인증코드 메일입니다.',
+      text: `인증 코드는 ${token} 입니다.`,
     };
 
     // 메일 발송
@@ -131,15 +136,74 @@ app.post('/email', async (req, res) => {
       console.log('Email sent: ' + info.response);
     });
 
-    // 가입된 이메일이 없으면 새로운 사용자 생성
-    await User.create({
-      email: req.body.email,
-      // password: hashedPassword,
-      token: token,
-      createdAt: now,
+    // ! 가입된 이메일이 없으면 새로운 사용자 생성
+    // await User.create({
+    //   email: req.body.email,
+    //   // password: hashedPassword,
+    //   token: token,
+    //   createdAt: now,
+    // });
+
+    const [user, created] = await User.findOrCreate({
+      where: {
+        email: req.body.email,
+        provider: null,
+      },
+      defaults: {
+        // ? findOrCreate 메소드가 사용자를 생성할 때 사용됩니다.
+        token: token,
+        // createdAt: now,
+
+        // password: hashedPassword,
+      },
     });
 
+    // ?만약 사용자가 이미 존재한다면,
+    if (!created) {
+      await user.update({
+        // 해당 사용자를 업데이트합니다.
+        token: token,
+        // createdAt: now,
+
+        // password: hashedPassword,
+      });
+    }
+
     res.json({ result: 'Check your email for verification code' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: '서버 에러' });
+  }
+});
+
+app.post('/verify', async (req, res) => {
+  try {
+    // 이메일과 토큰으로 사용자 찾기
+    const user = await User.findOne({
+      where: {
+        email: req.body.email,
+        token: req.body.token,
+      },
+    });
+
+    if (!user) {
+      return res.json({ result: 'Invalid email or token' });
+    }
+
+    // 토큰 생성 시간 확인
+    const now = new Date();
+    const diff = Math.abs(now - user.updatedAt) / 1000; // 초 단위로 변환
+
+    if (diff > 180) {
+      // 3분 = 180초=
+      return res.json({ result: 'Token expired' });
+    }
+
+    // 토큰 유효하면 사용자 인증
+    user.verified = true;
+    await user.save();
+
+    res.json({ result: 'User verified' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: '서버 에러' });

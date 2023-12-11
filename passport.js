@@ -13,8 +13,9 @@ passport.use(
     },
     async (email, password, done) => {
       try {
+        // ! email 과 provider 가 동시에 일치하는 것으로 수정해야 함.
         const existingUser = await User.findOne({ where: { email } });
-        // ! err, user, info 순으로 반환한다.
+        // ? err, user, info 순으로 반환한다.
         if (!existingUser) {
           return done(null, false, { result: '존재하지 않는 이메일입니다.' });
         }

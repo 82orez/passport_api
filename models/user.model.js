@@ -18,8 +18,8 @@ module.exports = (sequelize, DataTypes) => {
       },
       provider: {
         type: DataTypes.ENUM('Email', 'Google', 'Kakao'),
-        allowNull: false,
-        defaultValue: 'Email',
+        // allowNull: false,
+        // defaultValue: 'Email',
       },
       googleId: {
         type: DataTypes.STRING(30),
@@ -31,9 +31,15 @@ module.exports = (sequelize, DataTypes) => {
       },
       token: {
         type: DataTypes.STRING(6),
-      }
+      },
+      verified: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
     },
     {
+      // ? timestamps 기본값은 true: createdAt, updatedAt 칼럼 자동 생성.
       // timestamps: false,
     },
   );
