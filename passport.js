@@ -14,9 +14,19 @@ passport.use(
     },
     async (email, password, done) => {
       try {
-        // ! email 과 provider 가 동시에 일치하는 것으로 수정해야 함.
-        const existingUser = await User.findOne({ where: { email } });
+        // 클라이언트로부터 받은 이메일 정보와 일치하고, provider 의 값이 null 이 아닌 Google, Kakao, Email 을 가진 데이터가 있는지 찾아 본다.
+        const existingUser = await User.findOne({
+          where: {
+            email: email,
+            provider: {
+              [Op.ne]: null,
+            },
+          },
+        });
+
         // ? err, user, info 순으로 반환한다.
+
+        // 가입된 이메일 계정이 없으면 info 를 반환하고 종료한다.
         if (!existingUser) {
           return done(null, false, { result: '존재하지 않는 이메일입니다.' });
         }
