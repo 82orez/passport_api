@@ -2,6 +2,7 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const KakaoStrategy = require('passport-kakao').Strategy;
+const NaverStrategy = require('passport-naver').Strategy;
 const bcrypt = require('bcrypt');
 const { User } = require('./models');
 const { Op } = require('sequelize');
@@ -14,7 +15,7 @@ passport.use(
     },
     async (email, password, done) => {
       try {
-        // 클라이언트로부터 받은 이메일 정보와 일치하고, provider 의 값이 null 이 아닌 Google, Kakao, Email 을 가진 데이터가 있는지 찾아 본다.
+        // 클라이언트로부터 받은 이메일 정보와 일치하고, provider 의 값이 null 이 아닌 Google, Kakao, Email 등을 가진 데이터가 있는지 찾아 본다.
         const existingUser = await User.findOne({
           where: {
             email: email,
@@ -26,20 +27,23 @@ passport.use(
 
         // ? err, user, info 순으로 반환한다.
 
-        // 가입된 이메일 계정이 없으면 info 를 반환하고 종료한다.
+        // 가입된 이메일 계정이 없으면 user 없이 info 를 반환하고 종료한다.
         if (!existingUser) {
           return done(null, false, { result: '존재하지 않는 이메일입니다.' });
         }
 
+        // 가입된 이메일 계정이 있더라도 'Email' 계정이 아니면 user 없이 info 를 반환하고 종료한다. 왜냐하면 local 로그인 전략에서 다루는 것은 Email 계정에 한하기 때문이다.
         if (existingUser.provider !== 'Email') {
-          return done(null, false, { result: `${existingUser.provider}` });
+          return done(null, false, { provider: `${existingUser.provider}` });
         }
 
+        // 가입된 이메일 계정이 있더라도 비밀번호가 일치하지 않아도 user 없이 info 를 반환하고 종료한다.
         const isMatch = await bcrypt.compare(password, existingUser.password);
         if (!isMatch) {
           return done(null, false, { result: '비밀번호가 일치하지 않습니다.' });
         }
 
+        // 기존에 가입된 이메일 계정이 없고 비밀번호가 일치하면, user 정보에 existingUser 값을 반환하고 종료한다.
         return done(null, existingUser);
       } catch (error) {
         console.error(error);
@@ -121,6 +125,46 @@ passport.use(
             kakaoId: profile.id,
             email: profile._json.kakao_account.email,
             provider: 'Kakao',
+          });
+          return done(null, user);
+        }
+      } catch (err) {
+        console.log(err);
+        return done(err);
+      }
+    },
+  ),
+);
+
+passport.use(
+  new NaverStrategy(
+    {
+      clientID: process.env.NAVER_CLIENT_ID,
+      clientSecret: process.env.NAVER_CLIENT_SECRET,
+      callbackURL:
+        process.env.NODE_ENV === 'production' ? 'https://api.infothings.net/auth/naver/callback' : 'https://localhost:4000/auth/naver/callback',
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        const existingUser = await User.findOne({
+          where: {
+            email: profile.emails[0].value,
+            provider: {
+              [Op.ne]: null,
+            },
+          },
+        });
+        if (existingUser) {
+          if (existingUser.naverId) {
+            return done(null, existingUser);
+          } else {
+            return done(null, false, { message: `${existingUser.provider}` });
+          }
+        } else {
+          const user = await User.create({
+            naverId: profile.id,
+            email: profile.emails[0].value,
+            provider: 'Naver',
           });
           return done(null, user);
         }

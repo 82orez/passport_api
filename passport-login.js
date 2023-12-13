@@ -91,18 +91,16 @@ app.post('/email', async (req, res) => {
     // ? Google, Kakao, Email 계정으로 가입된 이메일이 있는지 확인.
     const existingUser = await User.findOne({
       where: {
-        // 클라이언트에서 보내온 이메일 값을 가지면서, provider 칼럼의 값이 null 이 아닌 경우: 여기에서는 Google, Kakao, Email
+        // 클라이언트에서 보내온 이메일 값을 가지면서, provider 칼럼의 값이 null 이 아닌 경우: 여기에서는 provider 의 값이 Google, Kakao, Email 등인 경우.
         email: req.body.email,
         provider: {
           [Op.ne]: null,
         },
       },
     });
-    // Google, Kakao, Email 계정(provider)로 가입된 이메일이 존재하면 응답을 보내고 종료.
+    // Google, Kakao, Email 계정(provider) 등으로 가입된 이메일이 존재하면 provider 의 값을 응답으로 보내고 종료.
     if (existingUser) {
-      if (existingUser.provider === 'Google' || existingUser.provider === 'Kakao' || existingUser.provider === 'Email') {
-        return res.json({ result: `${existingUser.provider}` });
-      }
+      return res.json({ provider: `${existingUser.provider}` });
     }
 
     // ? 클라이언트에서 보내온 이메일 값이 아예 없거나, provider 값이 null 인 경우 다음 과정을 계속 진행.
@@ -227,6 +225,9 @@ app.post('/signup', async (req, res) => {
 });
 
 app.post('/login', (req, res, next) => {
+  // passport-local 전략을 실행하고 전략으로부터 err, user, info 정보(값)을 받아온다.
+  // 받아온 err, user, info 정보(값)이 err 이면 err 을 출력하고 종료하고, user 정보가 없으면(user: false) info 값을 클라이언트로 응답한다.
+  // user 정보가 있으면 로그인 과정을 진행한다.
   passport.authenticate('local', (err, user, info) => {
     if (err) {
       console.error(err);
@@ -302,6 +303,24 @@ app.get('/auth/google/callback', function (req, res, next) {
 app.get('/auth/kakao', passport.authenticate('kakao'));
 app.get('/auth/kakao/callback', function (req, res, next) {
   passport.authenticate('kakao', function (err, user, info) {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.redirect((process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000') + '?message=' + encodeURIComponent(info.message));
+    }
+    req.logIn(user, function (err) {
+      if (err) {
+        return next(err);
+      }
+      return res.redirect(process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000');
+    });
+  })(req, res, next);
+});
+
+app.get('/auth/naver', passport.authenticate('naver'));
+app.get('/auth/naver/callback', function (req, res, next) {
+  passport.authenticate('naver', function (err, user, info) {
     if (err) {
       return next(err);
     }

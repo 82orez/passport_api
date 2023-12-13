@@ -19,16 +19,20 @@ module.exports = (sequelize, DataTypes) => {
         },
       },
       provider: {
-        type: DataTypes.ENUM('Email', 'Google', 'Kakao'),
+        type: DataTypes.ENUM('Email', 'Google', 'Kakao', 'Naver'),
         // allowNull: false,
         // defaultValue: 'Email',
       },
       googleId: {
-        type: DataTypes.STRING(30),
+        type: DataTypes.STRING(50),
         unique: true,
       },
       kakaoId: {
-        type: DataTypes.STRING(30),
+        type: DataTypes.STRING(50),
+        unique: true,
+      },
+      naverId: {
+        type: DataTypes.STRING(50),
         unique: true,
       },
       token: {
