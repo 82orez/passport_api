@@ -2,7 +2,7 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const KakaoStrategy = require('passport-kakao').Strategy;
-const NaverStrategy = require('passport-naver').Strategy;
+const { Strategy: NaverStrategy, Profile: NaverProfile } = require('passport-naver-v2');
 const bcrypt = require('bcrypt');
 const { User } = require('./models');
 const { Op } = require('sequelize');
@@ -145,10 +145,11 @@ passport.use(
         process.env.NODE_ENV === 'production' ? 'https://api.infothings.net/auth/naver/callback' : 'https://localhost:4000/auth/naver/callback',
     },
     async (accessToken, refreshToken, profile, done) => {
+      console.log('naver profile : ', profile);
       try {
         const existingUser = await User.findOne({
           where: {
-            email: profile.emails[0].value,
+            email: profile.email,
             provider: {
               [Op.ne]: null,
             },
@@ -163,7 +164,7 @@ passport.use(
         } else {
           const user = await User.create({
             naverId: profile.id,
-            email: profile.emails[0].value,
+            email: profile.email,
             provider: 'Naver',
           });
           return done(null, user);
