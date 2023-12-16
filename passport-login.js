@@ -76,6 +76,12 @@ app.use(session(sessionOption));
 app.use(passport.initialize());
 app.use(passport.session());
 
+// ! 로그인 후, 뒤로가기 버튼 방지 코드
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // ? React 배포 부분.
 app.use('/', express.static(`${__dirname}/build`));
 app.get('/', (req, res) => {
@@ -135,7 +141,7 @@ app.post('/email', async (req, res) => {
       console.log('Email sent: ' + info.response);
     });
 
-    // ! 가입된 이메일 계정이 없으면 새로운 사용자 생성
+    // ? 가입된 이메일 계정이 없으면 새로운 사용자 생성
     const [user, created] = await User.findOrCreate({
       where: {
         email: req.body.email,
