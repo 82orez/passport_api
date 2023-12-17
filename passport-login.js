@@ -279,7 +279,7 @@ app.post('/logout', (req, res) => {
   if (!req.user) {
     res.status(400).send('Not Authorized');
   } else {
-    req.session.destroy((err) => {
+    req.logout((err) => {
       if (err) {
         console.log(err);
       }
