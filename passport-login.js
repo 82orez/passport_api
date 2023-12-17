@@ -264,11 +264,12 @@ app.post('/login', (req, res, next) => {
 
 app.get('/userInfo', async (req, res) => {
   try {
-    // 세션 정보에 user 정보가 정의되어 있는지 확인
+    // ? 세션 정보(req.user)에 user 정보(id 등)가 정의되어 있는지 확인.
     if (!req.user) {
       return res.json({ result: 'Not Login Info' });
     } else {
-      res.json({ result: 'Login success', email: req.user.email });
+      // ? 결과 메세지와 user 정보를 클라이언트로 응답.
+      res.json({ result: 'Login success', email: req.user.email, provider: req.user.provider });
     }
   } catch (e) {
     console.error(e);
