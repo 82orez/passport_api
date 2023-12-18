@@ -234,6 +234,7 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({
       where: {
         email: req.body.email,
+        provider: 'Email',
       },
     });
 
@@ -241,8 +242,8 @@ app.post('/login', async (req, res) => {
     if (!user) {
       return res.json({ result: '존재하지 않는 이메일입니다.' });
     }
-    // 이메일이 존재하면 비밀번호 확인
 
+    // 조건을 만족하는 이메일이 존재하면 비밀번호 확인
     // 요청된 비밀번호와 암호화되어 저장되어 있는 비밀 번호를 비교
     const match = await bcrypt.compare(req.body.password, user.password);
 
@@ -291,7 +292,9 @@ app.get('/userInfo', async (req, res) => {
     if (!user || !user.id) {
       res.status(401).send('Not Authorized');
     } else {
+      // ! provider 클라이언트 부분 수정 필요.
       res.json({ result: 'Login success', email: user.email });
+      // res.json({ result: 'Login success', email: user.email, provider: user.provider });
     }
   } catch (e) {
     console.error(e);
