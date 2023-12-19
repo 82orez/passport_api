@@ -34,7 +34,7 @@ passport.use(
 
         // 가입된 이메일 계정이 있더라도 'Email' 계정이 아니면 user 없이 info 를 반환하고 종료한다. 왜냐하면 local 로그인 전략에서 다루는 것은 Email 계정에 한하기 때문이다.
         if (existingUser.provider !== 'Email') {
-          return done(null, false, { provider: `${existingUser.provider}` });
+          return done(null, false, { result: '다른 계정으로 이미 가입하셨네요.', provider: `${existingUser.provider}` });
         }
 
         // 가입된 이메일 계정이 있더라도 비밀번호가 일치하지 않아도 user 없이 info 를 반환하고 종료한다.

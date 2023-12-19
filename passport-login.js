@@ -244,7 +244,7 @@ app.post('/login', (req, res, next) => {
       return res.json(info);
     }
 
-    // ? req.user 에 user 정보(id 등)가 할당 됨. (req.user = user)
+    // ! req.user 에 user 정보(id 등)가 할당 됨. (req.user = user)
     req.logIn(user, function (err) {
       console.log(user);
       if (err) {
