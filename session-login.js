@@ -208,7 +208,7 @@ app.post('/signup', async (req, res) => {
     // 비밀번호를 암호화
     const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
 
-    // 가입된 이메일이 없으면 새로운 사용자 생성
+    // 가입된 이메일 계정이 없으면 새로운 사용자로 업데이트(provider: 'Email').
     await User.update(
       {
         password: hashedPassword,
@@ -309,7 +309,7 @@ app.post('/logout', (req, res) => {
       if (err) {
         console.log(err);
       }
-      res.status(205).send('Logged Out Successfully');
+      res.json({ result: 'Logged Out Successfully' });
     });
   }
 });
