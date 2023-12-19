@@ -292,9 +292,8 @@ app.get('/userInfo', async (req, res) => {
     if (!user || !user.id) {
       res.status(401).send('Not Authorized');
     } else {
-      // ! provider 클라이언트 부분 수정 필요.
-      res.json({ result: 'Login success', email: user.email });
-      // res.json({ result: 'Login success', email: user.email, provider: user.provider });
+      // !
+      res.json({ result: 'Login success', email: user.email, provider: user.provider });
     }
   } catch (e) {
     console.error(e);
