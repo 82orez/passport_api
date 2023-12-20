@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const session = require('express-session');
 const fs = require('fs');
 const https = require('https');
 const app = express();
@@ -15,15 +14,7 @@ const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
 const { sequelize, User } = require('./models');
-const passport = require('./passport');
 const { Op } = require('sequelize');
-const SequelizeStore = require('connect-session-sequelize')(session.Store);
-const sessionStore = new SequelizeStore({
-  db: sequelize,
-});
-
-const cookieParser = require('cookie-parser');
-app.use(cookieParser());
 
 // ? mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
 if (process.env.NODE_ENV !== 'production') {
@@ -55,29 +46,6 @@ if (process.env.NODE_ENV === 'production') {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// express-session 라이브러리를 이용해 쿠키 설정을 해줄 수 있습니다.
-const sessionOption = {
-  secret: process.env.COOKIE_SECRET || '@codestates',
-  resave: false,
-  saveUninitialized: false,
-  store: sessionStore,
-  cookie: {
-    domain: process.env.NODE_ENV === 'production' ? 'infothings.net' : 'localhost',
-    path: '/',
-    sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'none',
-    httpOnly: true,
-    secure: process.env.NODE_ENV !== 'production',
-    // secure: process.env.NODE_ENV === 'production' ? false : true,
-  },
-};
-if (process.env.NODE_ENV === 'production') {
-  sessionOption.proxy = true;
-}
-app.use(session(sessionOption));
-
-app.use(passport.initialize());
-app.use(passport.session());
 
 // ! 로그인 후, 뒤로가기 버튼 방지 코드
 app.use((req, res, next) => {
@@ -233,153 +201,17 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-app.post('/login', (req, res, next) => {
-  // passport-local 전략을 실행하고 전략으로부터 err, user, info 정보(값)을 받아온다.
-  // 받아온 err, user, info 정보(값)이 err 이면 err 을 출력하고 종료하고, user 정보가 없으면(user: false) info 값을 클라이언트로 응답한다.
-  // user 정보가 있으면 로그인 과정을 진행한다.
-  passport.authenticate('local', (err, user, info) => {
-    if (err) {
-      console.error(err);
-      return next(err);
-    }
+app.post('/login', (req, res, next) => {});
 
-    if (!user) {
-      return res.json(info);
-    }
+app.get('/userInfo', async (req, res) => {});
 
-    // ! req.user 에 user 정보(id 등)가 할당 됨. (req.user = user)
-    req.logIn(user, function (err) {
-      console.log(user);
-      if (err) {
-        console.error(err);
-        return next(err);
-      }
-
-      // 로그인 상태 유지: checkedKeepLogin 값에 따라 maxAge 설정
-      if (req.body.checkedKeepLogin) {
-        req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; // 7일
-      }
-
-      res.redirect('/userInfo');
-    });
-  })(req, res, next);
-});
-
-app.get('/userInfo', async (req, res) => {
-  try {
-    // ? 세션 정보(req.user)에 user 정보(id 등)가 정의되어 있는지 확인.
-    if (!req.user) {
-      return res.json({ result: 'Not Login Info' });
-    } else {
-      // ? 결과 메세지와 user 정보를 클라이언트로 응답.
-      res.json({ result: 'Login success', email: req.user.email, provider: req.user.provider });
-    }
-  } catch (e) {
-    console.error(e);
-  }
-});
-
-app.post('/logout', (req, res) => {
-  if (!req.user) {
-    res.status(400).send('Not Authorized');
-  } else {
-    req.logout((err) => {
-      if (err) {
-        console.log(err);
-      }
-      res.cookie('logged_out', 'true', {
-        domain: 'localhost',
-        path: '/',
-        sameSite: 'none',
-        secure: true,
-        httpOnly: true,
-      }); // 로그아웃 플래그를 설정합니다.
-      res.json({ result: 'Logged Out Successfully' });
-    });
-  }
-});
-
-function checkLogout(req, res, next) {
-  if (req.cookies.logged_out) {
-    res.clearCookie('logged_out'); // 쿠키를 삭제합니다.
-    return res.redirect(process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000/error-page');
-  }
-  next();
-}
-
-app.get('/auth/google', passport.authenticate('google', { prompt: 'select_account' }));
-app.get('/auth/google/callback', checkLogout, function (req, res, next) {
-  passport.authenticate('google', function (err, user, info) {
-    if (err) {
-      return next(err);
-    }
-    if (!user) {
-      return res.redirect((process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000') + '?message=' + encodeURIComponent(info.message));
-    }
-    req.logIn(user, function (err) {
-      if (err) {
-        return next(err);
-      }
-      return res.redirect(process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000');
-    });
-  })(req, res, next);
-});
-
-app.get('/auth/kakao', passport.authenticate('kakao'));
-app.get('/auth/kakao/callback', function (req, res, next) {
-  passport.authenticate('kakao', function (err, user, info) {
-    if (err) {
-      return next(err);
-    }
-    if (!user) {
-      return res.redirect((process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000') + '?message=' + encodeURIComponent(info.message));
-    }
-    req.logIn(user, function (err) {
-      if (err) {
-        return next(err);
-      }
-      return res.redirect(process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000');
-    });
-  })(req, res, next);
-});
-
-app.get('/auth/naver', passport.authenticate('naver', { authType: 'reprompt' }));
-app.get('/auth/naver/callback', function (req, res, next) {
-  passport.authenticate('naver', function (err, user, info) {
-    if (err) {
-      return next(err);
-    }
-    if (!user) {
-      return res.redirect((process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000') + '?message=' + encodeURIComponent(info.message));
-    }
-    req.logIn(user, function (err) {
-      if (err) {
-        return next(err);
-      }
-      return res.redirect(process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000');
-    });
-  })(req, res, next);
-});
-
-// ! 새로고침 시에 cannot get 404 오류 방지 코드
-if (process.env.NODE_ENV === 'production') {
-  app.get('/*', function (req, res) {
-    res.sendFile(`${__dirname}/build/index.html`, function (err) {
-      if (err) {
-        res.status(500).send(err);
-      }
-    });
-  });
-}
+app.post('/logout', (req, res) => {});
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
   .sync({ force: true })
   .then(() => console.log('DB is ready'))
   .catch((e) => console.log(e));
-
-// 세션 스토어를 DB 와 동기화.
-sessionStore.sync();
 
 const port = process.env.PORT || 4000;
 
