@@ -325,7 +325,7 @@ app.get('/auth/kakao/callback', function (req, res, next) {
   })(req, res, next);
 });
 
-app.get('/auth/naver', passport.authenticate('naver', { authType: 'reprompt' }));
+app.get('/auth/naver', passport.authenticate('naver'));
 app.get('/auth/naver/callback', function (req, res, next) {
   passport.authenticate('naver', function (err, user, info) {
     if (err) {
