@@ -22,9 +22,6 @@ const sessionStore = new SequelizeStore({
   db: sequelize,
 });
 
-const cookieParser = require('cookie-parser');
-app.use(cookieParser());
-
 // ? mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
 if (process.env.NODE_ENV !== 'production') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -287,28 +284,13 @@ app.post('/logout', (req, res) => {
       if (err) {
         console.log(err);
       }
-      res.cookie('logged_out', 'true', {
-        domain: 'localhost',
-        path: '/',
-        sameSite: 'none',
-        secure: true,
-        httpOnly: true,
-      }); // 로그아웃 플래그를 설정합니다.
       res.json({ result: 'Logged Out Successfully' });
     });
   }
 });
 
-function checkLogout(req, res, next) {
-  if (req.cookies.logged_out) {
-    res.clearCookie('logged_out'); // 쿠키를 삭제합니다.
-    return res.redirect(process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3000/error-page');
-  }
-  next();
-}
-
 app.get('/auth/google', passport.authenticate('google', { prompt: 'select_account' }));
-app.get('/auth/google/callback', checkLogout, function (req, res, next) {
+app.get('/auth/google/callback', function (req, res, next) {
   passport.authenticate('google', function (err, user, info) {
     if (err) {
       return next(err);
