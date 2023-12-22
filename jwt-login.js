@@ -15,6 +15,8 @@ const saltRounds = 10;
 
 const { sequelize, User } = require('./models');
 const { Op } = require('sequelize');
+const passport = require('./passport');
+const jwt = require('jsonwebtoken');
 
 // ? mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
 if (process.env.NODE_ENV !== 'production') {
@@ -201,7 +203,34 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-app.post('/login', (req, res, next) => {});
+// 라우터 설정
+app.post('/login', (req, res, next) => {
+  passport.authenticate('jwt', { session: false }, (err, user, info) => {
+    if (err) {
+      console.error(err);
+      return next(err);
+    }
+
+    if (!user) {
+      return res.json(info);
+    }
+
+    const payload = {
+      email: user.email,
+      password: user.password,
+    };
+
+    const token = jwt.sign(payload, 'secret', { expiresIn: '1h' });
+    let refreshToken = null;
+
+    if (req.body.checkedKeepLogin) {
+      refreshToken = jwt.sign(payload, 'refreshSecret', { expiresIn: '7d' });
+    }
+
+    res.json({ token, refreshToken });
+  })(req, res, next);
+});
+
 
 app.get('/userInfo', async (req, res) => {});
 
