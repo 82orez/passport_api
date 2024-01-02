@@ -266,6 +266,10 @@ app.get('/userInfo', async (req, res) => {
     const refreshToken = req.cookies['refresh_jwt'];
     const accessPayload = await verifyToken('access', accessToken);
 
+    if (!accessToken && !refreshToken) {
+      return res.json({ result: 'Not Login Info' });
+    }
+
     // accessToken 부터 먼저 검증.
     if (accessPayload) {
       const user = await User.findOne({
