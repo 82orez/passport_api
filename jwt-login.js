@@ -310,11 +310,33 @@ app.get('/userInfo', async (req, res) => {
   }
 });
 
-// app.post('/logout', (req, res) => {});
+app.post('/logout', (req, res) => {
+  const refreshToken = req.cookies['refresh_jwt'];
+
+  if (refreshToken) {
+    res.clearCookie('refresh_jwt', {
+      domain: process.env.NODE_ENV === 'production' ? 'infothings.net' : 'localhost',
+      path: '/',
+      sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'none',
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'production',
+    });
+  }
+
+  res.clearCookie('access_jwt', {
+    domain: process.env.NODE_ENV === 'production' ? 'infothings.net' : 'localhost',
+    path: '/',
+    sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'none',
+    httpOnly: true,
+    secure: process.env.NODE_ENV !== 'production',
+  });
+
+  return res.json({ result: 'Logged Out Successfully' });
+});
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
-  .sync({ force: true })
+  .sync({ force: false })
   .then(() => console.log('DB is ready'))
   .catch((e) => console.log(e));
 
