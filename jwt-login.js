@@ -7,6 +7,8 @@ const app = express();
 const dotenv = require('dotenv');
 dotenv.config();
 
+const cookieParser = require('cookie-parser');
+
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
@@ -15,8 +17,9 @@ const saltRounds = 10;
 
 const { sequelize, User } = require('./models');
 const { Op } = require('sequelize');
-const passport = require('./passport');
-const jwt = require('jsonwebtoken');
+
+// const jwt = require('jsonwebtoken');
+const { generateToken, verifyToken } = require('./controllers/tokenFunctions');
 
 // ? mkcert 에서 발급한 인증서를 사용하기 위한 코드입니다. 삭제하지 마세요!
 if (process.env.NODE_ENV !== 'production') {
@@ -48,6 +51,7 @@ if (process.env.NODE_ENV === 'production') {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // ! 로그인 후, 뒤로가기 버튼 방지 코드
 app.use((req, res, next) => {
@@ -203,38 +207,110 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// 라우터 설정
-app.post('/login', (req, res, next) => {
-  passport.authenticate('jwt', { session: false }, (err, user, info) => {
-    if (err) {
-      console.error(err);
-      return next(err);
-    }
+app.post('/login', async (req, res) => {
+  try {
+    // 먼저 가입된 이메일 계정이 존재하는지 확인
+    const user = await User.findOne({
+      where: {
+        email: req.body.email,
+        provider: 'Email',
+      },
+    });
 
+    // 가입된 이메일이 존재하지 않으면 메시지 보내고 종료.
     if (!user) {
-      return res.json(info);
+      return res.json({ result: '존재하지 않는 이메일입니다.' });
     }
 
-    const payload = {
-      email: user.email,
-      password: user.password,
-    };
+    // 조건을 만족하는 이메일 계정이 존재하면 비밀번호 확인
+    // 요청된 비밀번호와 암호화되어 저장되어 있는 비밀 번호를 비교
+    const match = await bcrypt.compare(req.body.password, user.password);
 
-    const token = jwt.sign(payload, 'secret', { expiresIn: '1h' });
-    let refreshToken = null;
+    if (!match) {
+      return res.json({ result: '비밀번호가 일치하지 않습니다.' });
+    }
+    // ? 이메일과 비번이 일치하는 user 가 있으면 다음 단계로 넘어감.
 
-    if (req.body.checkedKeepLogin) {
-      refreshToken = jwt.sign(payload, 'refreshSecret', { expiresIn: '7d' });
+    const { accessToken, refreshToken } = await generateToken(user, req.body.checkedKeepLogin);
+
+    if (refreshToken) {
+      // ? Expires 옵션이 있는 Persistent(영속성) Cookie
+      res.cookie('refresh_jwt', refreshToken, {
+        domain: process.env.NODE_ENV === 'production' ? 'infothings.net' : 'localhost',
+        path: '/',
+        sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'none',
+        httpOnly: true,
+        secure: process.env.NODE_ENV !== 'production',
+        expires: new Date(Date.now() + 24 * 3600 * 1000 * 7), // 7일 후 소멸되는 Persistent Cookie
+      });
     }
 
-    res.json({ token, refreshToken });
-  })(req, res, next);
+    // ? Expires 옵션이 없는 Session Cookie
+    res.cookie('access_jwt', accessToken, {
+      domain: process.env.NODE_ENV === 'production' ? 'infothings.net' : 'localhost',
+      path: '/',
+      sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'none',
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'production',
+    });
+    return res.redirect('/userInfo');
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: '서버 에러' });
+  }
 });
 
+app.get('/userInfo', async (req, res) => {
+  try {
+    const accessToken = req.cookies['access_jwt'];
+    const refreshToken = req.cookies['refresh_jwt'];
+    const accessPayload = await verifyToken('access', accessToken);
 
-app.get('/userInfo', async (req, res) => {});
+    // accessToken 부터 먼저 검증.
+    if (accessPayload) {
+      const user = await User.findOne({
+        where: {
+          id: accessPayload.id,
+          email: accessPayload.email,
+        },
+      });
+      if (!user) {
+        return res.status(401).send('Not Authorized');
+      }
+      return res.json({ result: 'Login success', email: user.email, provider: user.provider });
+    } else if (refreshToken) {
+      const refreshPayload = await verifyToken('refresh', refreshToken);
 
-app.post('/logout', (req, res) => {});
+      if (!refreshPayload) {
+        return res.status(401).send('Not Authorized');
+      }
+
+      const user = await User.findOne({
+        where: {
+          id: refreshPayload.id,
+          email: refreshPayload.email,
+        },
+      });
+
+      const { accessToken } = await generateToken(user);
+
+      res.cookie('access_jwt', accessToken, {
+        // ? Expires 옵션이 없는 Session Cookie
+        domain: process.env.NODE_ENV === 'production' ? 'infothings.net' : 'localhost',
+        path: '/',
+        sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'none',
+        httpOnly: true,
+        secure: process.env.NODE_ENV !== 'production',
+      });
+
+      return res.json({ result: 'Login success', email: user.email, provider: user.provider });
+    }
+  } catch (e) {
+    console.error(e);
+  }
+});
+
+// app.post('/logout', (req, res) => {});
 
 // 연결 객체를 이용해 DB 와 연결한다. sync 옵션은 원노트를 참조한다.
 sequelize
