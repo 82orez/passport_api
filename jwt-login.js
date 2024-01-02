@@ -266,6 +266,9 @@ app.get('/userInfo', async (req, res) => {
     const refreshToken = req.cookies['refresh_jwt'];
     const accessPayload = await verifyToken('access', accessToken);
 
+    //  ! 이 부분의 코드가 없었을 때에는 로그인 시에 간헐적으로 지연 현상이 있었으나, 아래 코드를 적용한 이후에는 그런 현상이 사라졌음.
+    // 이 부분은 session 으로 로그인 할 때에도 마찬가지였음.
+    // 아마 DB 조회 과정에 어떤 영향을 끼치는 것 같음.
     if (!accessToken && !refreshToken) {
       return res.json({ result: 'Not Login Info' });
     }
